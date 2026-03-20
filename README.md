@@ -176,20 +176,13 @@ O manifesto `_manifest.json` contém, para cada arquivo carregado:
 
 ## Como Executar
 
-Execute as células do notebook `01_ingestion_bronze.ipynb` em ordem sequencial:
+Execute os notebooks **em ordem**, rodando todas as células sequencialmente em cada um:
 
-| Célula | Ação |
-|--------|------|
-| 1 | Instalação de dependências |
-| 2 | Importação de bibliotecas |
-| 3 | Configurações do pipeline |
-| 4 | Definição das funções utilitárias |
-| 5 | Definição do cliente GCS |
-| 6 | Definição das funções de upload |
-| 7 | Descoberta dos arquivos locais |
-| 8 | Pré-visualização dos dados |
-| 9 | Conexão com o GCS |
-| 10 | Upload para a camada Bronze |
-| 11 | Upload do manifesto |
-| 12 | Relatório final |
-| 13 | Verificação dos arquivos no bucket |
+| Ordem | Notebook | Descrição |
+|-------|----------|-----------|
+| 1 | `01_ingestion_bronze.ipynb` | Lê os arquivos locais, faz upload para o GCS (Bronze) e gera o manifesto |
+| 2 | `02_transformation_silver.ipynb` | Lê o Bronze, aplica limpeza e enriquecimento, salva Parquet no Silver |
+| 3 | `03_load_gold_scd.ipynb` | Lê o Silver e popula a tabela `dim_produto_scd2` no BigQuery com SCD Tipo 2 |
+| 4 _(opcional)_ | `04_simulation_scd_changes.ipynb` | Gera um arquivo Silver modificado para demonstrar o SCD2 em ação |
+
+> **Dica:** Após rodar o notebook 4, execute novamente o notebook 3 apontando `SILVER_FILE_NAME = "vendas_enriquecido_v2.parquet"` para ver as alterações e exclusões lógicas sendo processadas.
