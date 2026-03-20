@@ -30,8 +30,8 @@ dataset/ (local)
 | Camada | Descrição | Status |
 |--------|-----------|--------|
 | **Bronze** | Dados brutos conforme recebidos, sem transformação | ✅ Concluído |
-| **Silver** | Limpeza, padronização e aplicação de SCD | 🔄 Próxima fase |
-| **Gold** | Agregações e visões analíticas finais | 🔄 Pendente |
+| **Silver** | Limpeza, padronização e aplicação de SCD | ✅ Concluído |
+| **Gold** | SCD Tipo 2 no BigQuery | ✅ Concluído |
 
 ---
 
@@ -48,6 +48,36 @@ dataset/ (local)
 
 ---
 
+### Fase 2 — Transformação (Silver)
+> Notebook: `02_transformation_silver.ipynb`
+
+- Leitura dos arquivos `.xlsx` diretamente da camada Bronze no GCS
+- Renomeação de colunas para snake_case padronizado
+- Extração do código numérico do campo `BRICK`
+- Preenchimento de nulos em colunas de volume com `0` (ausência de venda)
+- Conversão de tipos (int, float, string)
+- Remoção de duplicatas
+- Enriquecimento via join entre tabela de vendas e mapeamento de filiais
+- Adição de coluna de auditoria `dt_processamento`
+- Salvamento em formato **Parquet** na camada Silver do GCS
+
+---
+
+### Fase 3 — Carga com SCD Tipo 2 (Gold / BigQuery)
+> Notebook: `03_load_gold_scd.ipynb`
+
+- Leitura do Parquet `vendas_enriquecido.parquet` da camada Silver
+- Consolidação dos volumes por produto (agrupamento por EAN)
+- Criação automática da tabela `dim_produto_scd2` no BigQuery (se não existir)
+- Lógica SCD Tipo 2:
+  - **Produto novo** → inserção com `flag_ativo = TRUE` e `data_fim_validade = NULL`
+  - **Valor alterado** → encerramento do registro anterior (`flag_ativo = FALSE`, `data_fim_validade = hoje`) + inserção da nova versão
+  - **Sem alteração** → ignorado
+- Geração de `sk_produto` (Surrogate Key SHA256)
+- Relatório final com contagem de inserções, encerramentos e registros sem alteração
+
+---
+
 ## Estrutura do Projeto
 
 ```
@@ -56,6 +86,9 @@ mini_projeto/
 │   ├── filial-brick_sample.xlsx
 │   └── MS_12_2022_sample.xlsx
 ├── 01_ingestion_bronze.ipynb       # Fase 1: Ingestão → Camada Bronze
+├── 02_transformation_silver.ipynb  # Fase 2: Transformação → Camada Silver
+├── 03_load_gold_scd.ipynb          # Fase 3: Carga SCD Tipo 2 → BigQuery Gold
+├── 04_simulation_scd_changes.ipynb # Simulação: mudanças para teste do SCD2
 ├── requirements.txt                # Dependências do projeto
 ├── venv/                           # Ambiente virtual Python
 └── README.md
@@ -100,8 +133,11 @@ No VS Code, selecione o kernel **"Python (mini_projeto)"** no canto superior dir
 | Pacote | Uso |
 |--------|-----|
 | `google-cloud-storage` | Conexão e operações com o GCS |
-| `pandas` | Leitura e pré-visualização dos datasets |
+| `google-cloud-bigquery` | Conexão e operações com o BigQuery |
+| `db-dtypes` | Suporte a tipos BigQuery no pandas |
+| `pandas` | Leitura e transformação dos datasets |
 | `openpyxl` | Leitura de arquivos `.xlsx` |
+| `pyarrow` | Serialização Parquet para camada Silver/Gold |
 | `ipykernel` | Integração da venv com Jupyter/VS Code |
 
 ---
